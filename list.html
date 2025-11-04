@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker - Expense List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --primary-dark: #5649c0;
+            --secondary: #a29bfe;
+            --dark: #1e1e2e;
+            --darker: #151521;
+            --light: #f5f6fa;
+            --gray: #2d2d3a;
+            --success: #00b894;
+            --danger: #e84393;
+            --warning: #fdcb6e;
+            --info: #0984e3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--darker);
+            color: var(--light);
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--gray);
+        }
+
+        header h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--gray);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #3a3a4a;
+        }
+
+        .card {
+            background-color: var(--dark);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .search-container input, .search-container select {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid var(--gray);
+            background-color: var(--darker);
+            color: var(--light);
+            font-size: 1rem;
+        }
+
+        .search-container input:focus, .search-container select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.3);
+        }
+
+        .expense-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .expense-table th, .expense-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray);
+        }
+
+        .expense-table th {
+            background-color: var(--gray);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .expense-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .expense-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: var(--secondary);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .btn-icon:hover {
+            color: var(--primary);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray);
+            color: var(--secondary);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .search-container {
+                flex-direction: column;
+            }
+            
+            .expense-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-list"></i> Expense List</h1>
+        </header>
+
+        <div class="nav-buttons">
+            <a href="index.html" class="btn btn-secondary">
+                <i class="fas fa-plus-circle"></i> Add Expense
+            </a>
+            <a href="stats.html" class="btn btn-secondary">
+                <i class="fas fa-chart-bar"></i> Statistics
+            </a>
+            <a href="transaction.html" class="btn btn-secondary">
+                <i class="fas fa-exchange-alt"></i> Transactions
+            </a>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-search"></i> Search Expenses</h2>
+            <div class="search-container">
+                <input type="date" id="search-date" placeholder="Search by date">
+                <select id="search-reason">
+                    <option value="">All Reasons</option>
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                    <option value="Snacks">Snacks</option>
+                    <option value="Rickshaw/Pathao">Rickshaw/Pathao</option>
+                    <option value="Daily Need">Daily Need</option>
+                    <option value="Monthly Need">Monthly Need</option>
+                    <option value="Others">Others</option>
+                </select>
+                <button class="btn btn-primary" id="search-btn">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <button class="btn btn-secondary" id="reset-btn">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="expense-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Reason</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expense-list">
+                        <!-- Expense data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "***",
+            authDomain: "expense-tracker-ef86f.firebaseapp.com",
+            projectId: "expense-tracker-ef86f",
+            storageBucket: "expense-tracker-ef86f.firebasestorage.app",
+            messagingSenderId: "***",
+            appId: "*****"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // DOM Elements
+        const searchDateInput = document.getElementById('search-date');
+        const searchReasonSelect = document.getElementById('search-reason');
+        const searchBtn = document.getElementById('search-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const expenseList = document.getElementById('expense-list');
+
+        // Event Listeners
+        searchBtn.addEventListener('click', searchExpenses);
+        resetBtn.addEventListener('click', resetSearch);
+
+        // Functions
+        function loadExpenses() {
+            expenseList.innerHTML = '<tr><td colspan="5" style="text-align: center;">Loading expenses...</td></tr>';
+            
+            db.collection('expenses')
+                .orderBy('timestamp', 'desc')
+                .get()
+                .then(querySnapshot => {
+                    expenseList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        expenseList.innerHTML = '<tr><td colspan="5" style="text-align: center;">No expenses found. Add your first expense!</td></tr>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const expense = doc.data();
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>${expense.date}</td>
+                            <td>${expense.reason}</td>
+                            <td>${expense.description || '-'}</td>
+                            <td>৳ ${expense.amount.toFixed(2)}</td>
+                            <td class="expense-actions">
+                                <button class="btn-icon" onclick="deleteExpense('${doc.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        
+                        expenseList.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading expenses: ', error);
+                    expenseList.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error loading expenses. Please try again.</td></tr>';
+                });
+        }
+
+        function deleteExpense(id) {
+            if (confirm('Are you sure you want to delete this expense?')) {
+                db.collection('expenses').doc(id).delete()
+                    .then(() => {
+                        loadExpenses();
+                    })
+                    .catch(error => {
+                        console.error('Error deleting expense: ', error);
+                        alert('Error deleting expense. Please try again.');
+                    });
+            }
+        }
+
+        function searchExpenses() {
+            const searchDate = searchDateInput.value;
+            const searchReason = searchReasonSelect.value;
+            
+            let query = db.collection('expenses').orderBy('timestamp', 'desc');
+            
+            if (searchDate) {
+                query = query.where('date', '==', searchDate);
+            }
+            
+            if (searchReason) {
+                query = query.where('reason', '==', searchReason);
+            }
+            
+            query.get()
+                .then(querySnapshot => {
+                    expenseList.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        expenseList.innerHTML = '<tr><td colspan="5" style="text-align: center;">No expenses found matching your criteria.</td></tr>';
+                        return;
+                    }
+                    
+                    querySnapshot.forEach(doc => {
+                        const expense = doc.data();
+                        const row = document.createElement('tr');
+                        
+                        row.innerHTML = `
+                            <td>${expense.date}</td>
+                            <td>${expense.reason}</td>
+                            <td>${expense.description || '-'}</td>
+                            <td>৳ ${expense.amount.toFixed(2)}</td>
+                            <td class="expense-actions">
+                                <button class="btn-icon" onclick="deleteExpense('${doc.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        
+                        expenseList.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error searching expenses: ', error);
+                    expenseList.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error searching expenses. Please try again.</td></tr>';
+                });
+        }
+
+        function resetSearch() {
+            searchDateInput.value = '';
+            searchReasonSelect.value = '';
+            loadExpenses();
+        }
+
+        // Initialize the app
+        function initApp() {
+            loadExpenses();
+        }
+
+        // Run the app when the page loads
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+
+</html>
